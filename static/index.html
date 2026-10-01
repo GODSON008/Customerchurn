@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Churn & Revenue Intelligence Platform | Executive BI Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <div class="brand-text">
+                    <h2>RevIntel</h2>
+                    <span>Executive AI Suite</span>
+                </div>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-item active" onclick="switchTab('executive')">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>Executive Overview</span>
+                </button>
+                <button class="nav-item" onclick="switchTab('trends')">
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                    <span>Trends & Cohorts</span>
+                </button>
+                <button class="nav-item" onclick="switchTab('drivers')">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Churn Drivers</span>
+                </button>
+                <button class="nav-item" onclick="switchTab('predict')">
+                    <i class="fa-solid fa-brain"></i>
+                    <span>ML Risk Scoring</span>
+                </button>
+                <button class="nav-item" onclick="switchTab('simulator')">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Strategy Simulator</span>
+                </button>
+                <button class="nav-item" onclick="switchTab('analyst')">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>AI Executive Report</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="partner-badge">
+                    <div class="badge-title">AICTE | IBM SkillsBuild</div>
+                    <div class="badge-sub">BharatCares Data Analytics</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-title">
+                    <h1>Customer Churn & Revenue Intelligence Platform</h1>
+                    <p class="subtitle">Stage 6–7: Executive Business Intelligence & Prescriptive Decision Engine</p>
+                </div>
+                <div class="header-actions">
+                    <span class="live-pill"><span class="dot"></span> Live ML Pipeline</span>
+                    <button class="btn btn-outline" onclick="window.location.href='/docs'">
+                        <i class="fa-solid fa-code"></i> API Docs
+                    </button>
+                </div>
+            </header>
+
+            <!-- Level 1: Top KPI Ribbon (Universal) -->
+            <section class="kpi-ribbon">
+                <div class="kpi-card" id="card-revenue">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Total Revenue</span>
+                        <i class="fa-solid fa-vault kpi-icon"></i>
+                    </div>
+                    <div class="kpi-value" id="kpi-total-revenue">$0</div>
+                    <div class="kpi-subtext positive"><i class="fa-solid fa-arrow-up"></i> Cumulative Customer Value</div>
+                </div>
+
+                <div class="kpi-card" id="card-churn">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Overall Churn Rate</span>
+                        <i class="fa-solid fa-user-xmark kpi-icon danger"></i>
+                    </div>
+                    <div class="kpi-value" id="kpi-churn-rate">0%</div>
+                    <div class="kpi-subtext danger"><i class="fa-solid fa-circle-exclamation"></i> <span id="kpi-churn-count">0</span> Attrited Accounts</div>
+                </div>
+
+                <div class="kpi-card" id="card-risk">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Annual Revenue at Risk</span>
+                        <i class="fa-solid fa-triangle-exclamation kpi-icon warning"></i>
+                    </div>
+                    <div class="kpi-value warning" id="kpi-risk-revenue">$0</div>
+                    <div class="kpi-subtext warning"><i class="fa-solid fa-shield-halved"></i> Active Churn Exposure</div>
+                </div>
+
+                <div class="kpi-card" id="card-savings">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Projected Retention Recovery</span>
+                        <i class="fa-solid fa-piggy-bank kpi-icon success"></i>
+                    </div>
+                    <div class="kpi-value success" id="kpi-retention-savings">$0</div>
+                    <div class="kpi-subtext success"><i class="fa-solid fa-bullseye"></i> Targeted Interventions</div>
+                </div>
+            </section>
+
+            <!-- Tab 1: Executive Overview -->
+            <div id="tab-executive" class="tab-pane active">
+                <div class="grid-2-col">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-chart-pie"></i> Revenue Distribution & Retention Balance</h3>
+                            <span class="badge">Dataset: 3,000 Accounts</span>
+                        </div>
+                        <div class="chart-box">
+                            <canvas id="chartRetentionDonut"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-map-location-dot"></i> Regional Churn Vulnerability</h3>
+                            <span class="badge">Regional Matrix</span>
+                        </div>
+                        <div class="chart-box">
+                            <canvas id="chartRegionChurn"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel mt-4">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-sitemap"></i> The Decision Hierarchy (From Fact to Strategic Action)</h3>
+                    </div>
+                    <div class="hierarchy-flow">
+                        <div class="flow-step step-1">
+                            <div class="step-badge">Level 1 - KPIs</div>
+                            <h4>What is happening?</h4>
+                            <p>3,000 Customers tracked; 47.1% overall churn pressure, risking $1.4M+ ARR.</p>
+                        </div>
+                        <div class="flow-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                        <div class="flow-step step-2">
+                            <div class="step-badge">Level 2 - Trends</div>
+                            <h4>How is it changing?</h4>
+                            <p>Tenure < 12 months exhibits 68% churn, decaying rapidly to < 18% at 48+ months.</p>
+                        </div>
+                        <div class="flow-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                        <div class="flow-step step-3">
+                            <div class="step-badge">Level 3 - Drivers</div>
+                            <h4>Why is it happening?</h4>
+                            <p>Month-to-month contracts & Fiber without Tech Support drive 76% of all exits.</p>
+                        </div>
+                        <div class="flow-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                        <div class="flow-step step-4">
+                            <div class="step-badge">Level 4 - Risk</div>
+                            <h4>What could go wrong?</h4>
+                            <p>High-value accounts with >=3 support tickets trigger immediate churn in 30 days.</p>
+                        </div>
+                        <div class="flow-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                        <div class="flow-step step-5">
+                            <div class="step-badge">Level 5 - Action</div>
+                            <h4>What should we do?</h4>
+                            <p>Incentivize 1-Yr contract upgrade + free 3-Mo tech support on priority alerts.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Trends & Cohorts -->
+            <div id="tab-trends" class="tab-pane">
+                <div class="grid-2-col">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-chart-line"></i> Churn Probability by Customer Tenure Cohort</h3>
+                        </div>
+                        <div class="chart-box">
+                            <canvas id="chartTenureTrend"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-chart-column"></i> Monthly Revenue Impact Across Tenure Groups</h3>
+                        </div>
+                        <div class="chart-box">
+                            <canvas id="chartTenureRevenue"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Churn Drivers -->
+            <div id="tab-drivers" class="tab-pane">
+                <div class="grid-2-col">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-file-contract"></i> Contract Type vs. Churn Rate (%)</h3>
+                        </div>
+                        <div class="chart-box">
+                            <canvas id="chartContractDriver"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-headset"></i> Support Tickets vs. Churn Escalation</h3>
+                        </div>
+                        <div class="chart-box">
+                            <canvas id="chartTicketsDriver"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel mt-4">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-ranking-star"></i> Machine Learning Feature Importance (Top Risk Factors)</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="featuresTable">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Predictive Risk Factor</th>
+                                    <th>Importance Score</th>
+                                    <th>Executive Interpretation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: ML Risk Scoring Calculator -->
+            <div id="tab-predict" class="tab-pane">
+                <div class="grid-2-col">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-calculator"></i> Real-Time Customer Profile Scoring</h3>
+                        </div>
+                        <form id="predictionForm" class="form-grid">
+                            <div class="form-group">
+                                <label>Region</label>
+                                <select id="inputRegion" class="form-control">
+                                    <option value="West">West</option>
+                                    <option value="East">East</option>
+                                    <option value="North">North</option>
+                                    <option value="South">South</option>
+                                    <option value="Central">Central</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Tenure (Months)</label>
+                                <input type="number" id="inputTenure" class="form-control" value="6" min="1" max="72">
+                            </div>
+                            <div class="form-group">
+                                <label>Contract Type</label>
+                                <select id="inputContract" class="form-control">
+                                    <option value="Month-to-month">Month-to-month</option>
+                                    <option value="One year">One year</option>
+                                    <option value="Two year">Two year</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Internet Service</label>
+                                <select id="inputInternet" class="form-control">
+                                    <option value="Fiber Optic">Fiber Optic</option>
+                                    <option value="DSL">DSL</option>
+                                    <option value="No">No Internet</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Tech Support Included?</label>
+                                <select id="inputTechSupport" class="form-control">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Payment Method</label>
+                                <select id="inputPayment" class="form-control">
+                                    <option value="Electronic check">Electronic check</option>
+                                    <option value="Credit card (automatic)">Credit card (automatic)</option>
+                                    <option value="Bank transfer (automatic)">Bank transfer (automatic)</option>
+                                    <option value="Mailed check">Mailed check</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Monthly Charges ($)</label>
+                                <input type="number" id="inputMonthlyCharges" class="form-control" value="85.50" step="0.5">
+                            </div>
+                            <div class="form-group">
+                                <label>Support Tickets (Last 6 Mo)</label>
+                                <input type="number" id="inputSupportTickets" class="form-control" value="3" min="0" max="10">
+                            </div>
+
+                            <div class="form-full">
+                                <button type="button" class="btn btn-primary btn-block" onclick="runPrediction()">
+                                    <i class="fa-solid fa-microchip"></i> Run ML Churn Assessment
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="panel" id="predictionResultPanel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-clipboard-check"></i> ML Risk Diagnostic Output</h3>
+                        </div>
+                        <div class="result-box" id="resultPlaceholder">
+                            <div class="gauge-container">
+                                <div class="risk-gauge" id="riskGauge">
+                                    <span class="risk-percentage" id="riskScoreVal">--%</span>
+                                    <span class="risk-label" id="riskLevelVal">Awaiting Input</span>
+                                </div>
+                            </div>
+                            <div class="financial-exposure mt-3">
+                                <div><strong>Annualized Revenue Loss:</strong> <span id="annualLossVal">$0.00</span></div>
+                            </div>
+                            <div class="prescription-box mt-3">
+                                <h4><i class="fa-solid fa-lightbulb"></i> Automated Prescriptive Strategy</h4>
+                                <ul id="prescriptiveList">
+                                    <li>Fill customer parameters and click calculate.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 5: Retention Strategy Simulator -->
+            <div id="tab-simulator" class="tab-pane">
+                <div class="grid-2-col">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-sliders"></i> What-If Retention Strategy Controls</h3>
+                        </div>
+                        <div class="simulator-controls">
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>1-Year Contract Upgrade Incentive Discount</label>
+                                    <span id="sliderDiscountVal">10%</span>
+                                </div>
+                                <input type="range" id="simDiscount" min="0" max="30" value="10" step="1" oninput="updateSimulation()">
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <label>Loyalty Retention Bill Credit</label>
+                                    <span id="sliderLoyaltyVal">5%</span>
+                                </div>
+                                <input type="range" id="simLoyalty" min="0" max="25" value="5" step="1" oninput="updateSimulation()">
+                            </div>
+
+                            <div class="toggle-group mt-3">
+                                <label class="switch">
+                                    <input type="checkbox" id="simTechBundle" checked onchange="updateSimulation()">
+                                    <span class="slider-round"></span>
+                                </label>
+                                <span class="toggle-label">Include Complimentary 24/7 Tech Support for Fiber Accounts</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-chart-gantt"></i> Simulated Business Impact & ROI</h3>
+                        </div>
+                        <div class="simulation-metrics">
+                            <div class="sim-metric-card">
+                                <span class="sim-label">New Simulated Churn Rate</span>
+                                <span class="sim-val highlight" id="simNewChurn">--%</span>
+                                <span class="sim-delta positive" id="simReductionPct">↓ 0% Churn Reduction</span>
+                            </div>
+                            <div class="sim-metric-card">
+                                <span class="sim-label">Annual Revenue Protected</span>
+                                <span class="sim-val success" id="simRevProtected">$0</span>
+                            </div>
+                            <div class="sim-metric-card">
+                                <span class="sim-label">Estimated Program ROI</span>
+                                <span class="sim-val positive" id="simRoiPct">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 6: AI Executive Analyst Report -->
+            <div id="tab-analyst" class="tab-pane">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-robot"></i> AI Executive Analyst Briefing</h3>
+                        <span class="badge badge-accent">Verified Machine Learning Synthesis</span>
+                    </div>
+
+                    <div class="analyst-section mt-3">
+                        <h4 class="section-title"><i class="fa-solid fa-magnifying-glass-chart"></i> 5 Key Empirical Findings</h4>
+                        <ol class="briefing-list" id="findingsList"></ol>
+                    </div>
+
+                    <div class="grid-2-col mt-4">
+                        <div class="risk-card-container">
+                            <h4 class="danger-title"><i class="fa-solid fa-shield-virus"></i> 3 Critical Business Risks</h4>
+                            <ul class="briefing-list" id="risksList"></ul>
+                        </div>
+                        <div class="opportunity-card-container">
+                            <h4 class="success-title"><i class="fa-solid fa-seedling"></i> 3 High-Yield Opportunities</h4>
+                            <ul class="briefing-list" id="opportunitiesList"></ul>
+                        </div>
+                    </div>
+
+                    <div class="analyst-section mt-4">
+                        <h4 class="section-title action-header"><i class="fa-solid fa-bullhorn"></i> 5 Strategic Executive Recommended Actions</h4>
+                        <ol class="briefing-list" id="actionsList"></ol>
+                    </div>
+
+                    <div class="panel mt-4">
+                        <h4><i class="fa-solid fa-microchip"></i> Model Architecture & Benchmark Comparisons</h4>
+                        <div class="table-responsive mt-2">
+                            <table class="data-table" id="modelComparisonTable">
+                                <thead>
+                                    <tr>
+                                        <th>Algorithm</th>
+                                        <th>Accuracy</th>
+                                        <th>Precision</th>
+                                        <th>Recall</th>
+                                        <th>F1-Score</th>
+                                        <th>ROC-AUC</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

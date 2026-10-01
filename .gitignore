@@ -1,0 +1,11 @@
+# Ignore video recordings and large binaries
+*.mp4
+*.mov
+*.avi
+
+# Python and OS artifacts
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+env/
