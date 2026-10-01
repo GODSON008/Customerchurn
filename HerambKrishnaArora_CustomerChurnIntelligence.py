@@ -3,285 +3,275 @@
 AICTE | IBM SkillsBuild Data Analytics with AI Academic Internship
 Project: Customer Churn & Revenue Intelligence Platform
 Domain: Business Intelligence, Machine Learning & Prescriptive Analytics
-Author / Submitter: BharatCares Internship Submission
+Student Name: Heramb Krishna Arora
+Format: Complete All-in-One Project Code File
 ================================================================================
 """
 
 import os
 import sys
-import json
-import joblib
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
-from pydantic import BaseModel
-from typing import Dict, Any, List
-
-# ==============================================================================
-# SECTION 1: DATA PIPELINE & MODEL ENGINE
-# ==============================================================================
-DATA_FILE = "data/customer_churn_data.csv"
-MODEL_FILE = "models/churn_model.joblib"
-
-def ensure_dataset_and_model():
-    os.makedirs("data", exist_ok=True)
-    os.makedirs("models", exist_ok=True)
-    os.makedirs("static/images", exist_ok=True)
-
-    if not os.path.exists(DATA_FILE):
-        print("[+] Generating customer subscription dataset...")
-        np.random.seed(42)
-        n = 3000
-        
-        c_ids = [f"CUST-{10000 + i}" for i in range(n)]
-        regions = np.random.choice(["West", "East", "North", "South", "Central"], size=n, p=[0.30, 0.25, 0.20, 0.15, 0.10])
-        genders = np.random.choice(["Male", "Female"], size=n)
-        seniors = np.random.choice([0, 1], size=n, p=[0.82, 0.18])
-        partners = np.random.choice(["Yes", "No"], size=n, p=[0.52, 0.48])
-        dependents = np.random.choice(["Yes", "No"], size=n, p=[0.33, 0.67])
-        tenures = np.random.randint(1, 73, size=n)
-        phones = np.random.choice(["Yes", "No"], size=n, p=[0.90, 0.10])
-        multilines = np.where(phones == "Yes", np.random.choice(["Yes", "No"], size=n, p=[0.45, 0.55]), "No phone service")
-        internets = np.random.choice(["Fiber Optic", "DSL", "No"], size=n, p=[0.45, 0.35, 0.20])
-        
-        security = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.38, 0.62]), "No internet service")
-        backup = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.42, 0.58]), "No internet service")
-        protection = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.40, 0.60]), "No internet service")
-        tech_support = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.35, 0.65]), "No internet service")
-        tv = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.48, 0.52]), "No internet service")
-        movies = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.50, 0.50]), "No internet service")
-        
-        contracts = np.random.choice(["Month-to-month", "One year", "Two year"], size=n, p=[0.55, 0.23, 0.22])
-        paperless = np.random.choice(["Yes", "No"], size=n, p=[0.60, 0.40])
-        payments = np.random.choice(["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"], size=n, p=[0.35, 0.20, 0.25, 0.20])
-        
-        base_charges = np.zeros(n)
-        base_charges += np.where(phones == "Yes", 20.0, 0.0)
-        base_charges += np.where(multilines == "Yes", 10.0, 0.0)
-        base_charges += np.where(internets == "DSL", 30.0, 0.0)
-        base_charges += np.where(internets == "Fiber Optic", 50.0, 0.0)
-        base_charges += np.where(tech_support == "Yes", 6.0, 0.0)
-        base_charges += np.where(tv == "Yes", 8.0, 0.0)
-        monthly_charges = np.round(np.clip(base_charges + np.random.normal(5.0, 3.0, size=n), 18.5, 125.0), 2)
-        total_charges = np.round(np.clip(monthly_charges * tenures + np.random.normal(0, 15.0, size=n), 18.5, None), 2)
-        tickets = np.random.poisson(lam=1.5, size=n)
-        
-        churn_score = (
-            - 0.05 * tenures
-            + 1.8 * (contracts == "Month-to-month")
-            - 1.2 * (contracts == "Two year")
-            + 0.9 * (internets == "Fiber Optic")
-            - 0.8 * (tech_support == "Yes")
-            + 0.6 * (payments == "Electronic check")
-            + 0.02 * monthly_charges
-            + 0.45 * tickets
-            + 0.5 * (regions == "West")
-            + 0.3 * seniors
-            - 0.4 * (partners == "Yes")
-        )
-        prob = 1 / (1 + np.exp(-(churn_score - 1.6)))
-        churn = np.where(np.random.rand(n) < prob, "Yes", "No")
-        
-        df_gen = pd.DataFrame({
-            "CustomerID": c_ids, "Region": regions, "Gender": genders, "SeniorCitizen": seniors,
-            "Partner": partners, "Dependents": dependents, "Tenure": tenures, "PhoneService": phones,
-            "MultipleLines": multilines, "InternetService": internets, "OnlineSecurity": security,
-            "OnlineBackup": backup, "DeviceProtection": protection, "TechSupport": tech_support,
-            "StreamingTV": tv, "StreamingMovies": movies, "Contract": contracts,
-            "PaperlessBilling": paperless, "PaymentMethod": payments, "MonthlyCharges": monthly_charges,
-            "TotalCharges": total_charges, "SupportTickets": tickets, "Churn": churn
-        })
-        df_gen.to_csv(DATA_FILE, index=False)
-
-    if not os.path.exists(MODEL_FILE):
-        print("[+] Training and serializing ML models...")
-        df_train = pd.read_csv(DATA_FILE)
-        df_train['Churn_Numeric'] = (df_train['Churn'] == 'Yes').astype(int)
-        
-        feature_cols = [
-            'Region', 'Gender', 'SeniorCitizen', 'Partner', 'Dependents',
-            'Tenure', 'PhoneService', 'MultipleLines', 'InternetService',
-            'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
-            'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling',
-            'PaymentMethod', 'MonthlyCharges', 'TotalCharges', 'SupportTickets'
-        ]
-        
-        X = df_train[feature_cols]
-        y = df_train['Churn_Numeric']
-        cat_cols = X.select_dtypes(include=['object']).columns.tolist()
-        X_encoded = pd.get_dummies(X, columns=cat_cols, drop_first=True)
-        encoded_cols = X_encoded.columns.tolist()
-        
-        X_train, X_test, y_train, y_test = train_test_split(X_encoded, y, test_size=0.20, random_state=42, stratify=y)
-        scaler = StandardScaler()
-        X_train_s = scaler.fit_transform(X_train)
-        X_test_s = scaler.transform(X_test)
-        
-        models = {
-            "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
-            "Random Forest": RandomForestClassifier(n_estimators=150, max_depth=8, random_state=42),
-            "Gradient Boosting": GradientBoostingClassifier(n_estimators=120, learning_rate=0.08, max_depth=4, random_state=42)
-        }
-        
-        results = {}
-        best_name = "Gradient Boosting"
-        best_model = None
-        best_auc = 0.0
-        
-        for name, m in models.items():
-            m.fit(X_train_s, y_train)
-            pred = m.predict(X_test_s)
-            probs = m.predict_proba(X_test_s)[:, 1]
-            auc = roc_auc_score(y_test, probs)
-            results[name] = {
-                "Accuracy": round(accuracy_score(y_test, pred), 4),
-                "Precision": round(precision_score(y_test, pred), 4),
-                "Recall": round(recall_score(y_test, pred), 4),
-                "F1_Score": round(f1_score(y_test, pred), 4),
-                "ROC_AUC": round(auc, 4)
-            }
-            if auc > best_auc:
-                best_auc = auc
-                best_name = name
-                best_model = m
-                
-        importances = best_model.feature_importances_ if hasattr(best_model, 'feature_importances_') else np.abs(best_model.coef_[0])
-        feat_imp = pd.DataFrame({'Feature': encoded_cols, 'Importance': importances}).sort_values(by='Importance', ascending=False)
-        
-        art = {
-            "model": best_model,
-            "model_name": best_name,
-            "scaler": scaler,
-            "encoded_columns": encoded_cols,
-            "original_features": feature_cols,
-            "categorical_columns": cat_cols,
-            "results": results,
-            "top_features": feat_imp.head(10).to_dict(orient='records')
-        }
-        joblib.dump(art, MODEL_FILE)
-
-ensure_dataset_and_model()
-
-# ==============================================================================
-# SECTION 2: FASTAPI BACKEND SERVER & REST API ENDPOINTS
-# ==============================================================================
-artifact = joblib.load(MODEL_FILE)
-model = artifact["model"]
-scaler = artifact["scaler"]
-encoded_columns = artifact["encoded_columns"]
-model_results = artifact["results"]
-top_features = artifact["top_features"]
-df = pd.read_csv(DATA_FILE)
-
-app = FastAPI(
-    title="Customer Churn & Revenue Intelligence Platform",
-    description="Executive Decision Intelligence Suite",
-    version="1.0.0"
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    confusion_matrix,
+    classification_report,
 )
 
-if os.path.exists("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+# Set visualization theme
+sns.set_theme(style="whitegrid")
+plt.rcParams["figure.figsize"] = (9, 5)
 
-class CustomerInput(BaseModel):
-    Region: str = "West"
-    Gender: str = "Female"
-    SeniorCitizen: int = 0
-    Partner: str = "No"
-    Dependents: str = "No"
-    Tenure: int = 6
-    PhoneService: str = "Yes"
-    MultipleLines: str = "No"
-    InternetService: str = "Fiber Optic"
-    OnlineSecurity: str = "No"
-    OnlineBackup: str = "No"
-    DeviceProtection: str = "No"
-    TechSupport: str = "No"
-    StreamingTV: str = "Yes"
-    StreamingMovies: str = "Yes"
-    Contract: str = "Month-to-month"
-    PaperlessBilling: str = "Yes"
-    PaymentMethod: str = "Electronic check"
-    MonthlyCharges: float = 85.50
-    TotalCharges: float = 513.00
-    SupportTickets: int = 3
+# ==============================================================================
+# 1. DATASET SYNTHESIS & INGESTION (Level 1: Executive KPIs)
+# ==============================================================================
+DATA_PATH = "data/customer_churn_data.csv"
+os.makedirs("data", exist_ok=True)
 
-class SimulationInput(BaseModel):
-    contract_upgrade_discount: float = 10.0
-    free_tech_support_bundle: bool = True
-    loyalty_retention_discount: float = 5.0
+if not os.path.exists(DATA_PATH):
+    print("[+] Synthesizing 3,000 subscriber records with multi-variable churn dynamics...")
+    np.random.seed(42)
+    n = 3000
 
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    if os.path.exists("static/index.html"):
-        with open("static/index.html", "r", encoding="utf-8") as f:
-            return f.read()
-    return "<h1>Customer Churn & Revenue Intelligence API Running. Visit /docs for OpenAPI specifications.</h1>"
+    c_ids = [f"CUST-{10000 + i}" for i in range(n)]
+    regions = np.random.choice(["West", "East", "North", "South", "Central"], size=n, p=[0.30, 0.25, 0.20, 0.15, 0.10])
+    genders = np.random.choice(["Male", "Female"], size=n)
+    seniors = np.random.choice([0, 1], size=n, p=[0.82, 0.18])
+    partners = np.random.choice(["Yes", "No"], size=n, p=[0.52, 0.48])
+    dependents = np.random.choice(["Yes", "No"], size=n, p=[0.33, 0.67])
+    tenures = np.random.randint(1, 73, size=n)
+    phones = np.random.choice(["Yes", "No"], size=n, p=[0.90, 0.10])
+    multilines = np.where(phones == "Yes", np.random.choice(["Yes", "No"], size=n, p=[0.45, 0.55]), "No phone service")
+    internets = np.random.choice(["Fiber Optic", "DSL", "No"], size=n, p=[0.45, 0.35, 0.20])
 
-@app.get("/api/kpis")
-async def get_kpis():
-    total = int(len(df))
-    churn_cnt = int((df['Churn'] == 'Yes').sum())
-    retained_cnt = int(total - churn_cnt)
-    churn_rate = float(round((churn_cnt / total) * 100, 2))
-    tot_rev = float(round(df['TotalCharges'].sum(), 2))
-    risk_rev = float(round(df[df['Churn'] == 'Yes']['MonthlyCharges'].sum() * 12, 2))
-    savings = float(round(risk_rev * 0.35, 2))
-    return {
-        "total_customers": total,
-        "active_customers": retained_cnt,
-        "churned_customers": churn_cnt,
-        "churn_rate_pct": churn_rate,
-        "total_revenue": tot_rev,
-        "annual_revenue_at_risk": risk_rev,
-        "projected_retention_savings": savings
-    }
+    security = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.38, 0.62]), "No internet service")
+    backup = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.42, 0.58]), "No internet service")
+    protection = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.40, 0.60]), "No internet service")
+    tech_support = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.35, 0.65]), "No internet service")
+    tv = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.48, 0.52]), "No internet service")
+    movies = np.where(internets != "No", np.random.choice(["Yes", "No"], size=n, p=[0.50, 0.50]), "No internet service")
 
-@app.post("/api/predict")
-async def predict(cust: CustomerInput):
-    inp_df = pd.DataFrame([cust.dict()])
-    cat_cols = artifact["categorical_columns"]
-    encoded = pd.get_dummies(inp_df, columns=cat_cols, drop_first=True)
-    final_df = pd.DataFrame(0, index=[0], columns=encoded_columns)
-    for col in encoded.columns:
-        if col in final_df.columns:
-            final_df[col] = encoded[col]
-            
-    scaled = scaler.transform(final_df)
-    prob = float(model.predict_proba(scaled)[0][1])
-    risk_level = "Critical" if prob >= 0.70 else "High" if prob >= 0.50 else "Moderate" if prob >= 0.30 else "Low"
-    
-    actions = []
-    if cust.Contract == "Month-to-month":
-        actions.append("Offer 1-Year Contract Upgrade with 10% Loyalty Discount.")
-    if cust.TechSupport == "No":
-        actions.append("Attach Free 3-Month Priority 24/7 Tech Support.")
-    if cust.SupportTickets >= 2:
-        actions.append("Escalate account to Executive Customer Success Manager.")
-    if not actions:
-        actions.append("Customer healthy. Trigger loyalty rewards and cross-sell.")
-        
-    return {
-        "churn_probability": round(prob, 4),
-        "risk_level": risk_level,
-        "risk_score_pct": round(prob * 100, 1),
-        "estimated_annual_loss": round(cust.MonthlyCharges * 12, 2),
-        "prescriptive_actions": actions
-    }
+    contracts = np.random.choice(["Month-to-month", "One year", "Two year"], size=n, p=[0.55, 0.23, 0.22])
+    paperless = np.random.choice(["Yes", "No"], size=n, p=[0.60, 0.40])
+    payments = np.random.choice(
+        ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"],
+        size=n,
+        p=[0.35, 0.20, 0.25, 0.20],
+    )
 
-if __name__ == "__main__":
-    print("\n========================================================")
-    print("  Customer Churn & Revenue Intelligence Platform")
-    print("  AICTE | IBM SkillsBuild Internship Project")
-    print("  Server launching on: http://localhost:8000")
-    print("  API Docs available on: http://localhost:8000/docs")
-    print("========================================================\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    base_charges = np.zeros(n)
+    base_charges += np.where(phones == "Yes", 20.0, 0.0)
+    base_charges += np.where(multilines == "Yes", 10.0, 0.0)
+    base_charges += np.where(internets == "DSL", 30.0, 0.0)
+    base_charges += np.where(internets == "Fiber Optic", 50.0, 0.0)
+    base_charges += np.where(tech_support == "Yes", 6.0, 0.0)
+    base_charges += np.where(tv == "Yes", 8.0, 0.0)
+    monthly_charges = np.round(np.clip(base_charges + np.random.normal(5.0, 3.0, size=n), 18.5, 125.0), 2)
+    total_charges = np.round(np.clip(monthly_charges * tenures + np.random.normal(0, 15.0, size=n), 18.5, None), 2)
+    tickets = np.random.poisson(lam=1.5, size=n)
+
+    churn_score = (
+        - 0.05 * tenures
+        + 1.8 * (contracts == "Month-to-month")
+        - 1.2 * (contracts == "Two year")
+        + 0.9 * (internets == "Fiber Optic")
+        - 0.8 * (tech_support == "Yes")
+        + 0.6 * (payments == "Electronic check")
+        + 0.02 * monthly_charges
+        + 0.45 * tickets
+        + 0.5 * (regions == "West")
+        + 0.3 * seniors
+        - 0.4 * (partners == "Yes")
+    )
+    prob = 1 / (1 + np.exp(-(churn_score - 1.6)))
+    churn = np.where(np.random.rand(n) < prob, "Yes", "No")
+
+    df = pd.DataFrame({
+        "CustomerID": c_ids, "Region": regions, "Gender": genders, "SeniorCitizen": seniors,
+        "Partner": partners, "Dependents": dependents, "Tenure": tenures, "PhoneService": phones,
+        "MultipleLines": multilines, "InternetService": internets, "OnlineSecurity": security,
+        "OnlineBackup": backup, "DeviceProtection": protection, "TechSupport": tech_support,
+        "StreamingTV": tv, "StreamingMovies": movies, "Contract": contracts,
+        "PaperlessBilling": paperless, "PaymentMethod": payments, "MonthlyCharges": monthly_charges,
+        "TotalCharges": total_charges, "SupportTickets": tickets, "Churn": churn
+    })
+    df.to_csv(DATA_PATH, index=False)
+else:
+    df = pd.read_csv(DATA_PATH)
+
+print(f"\n=======================================================")
+print(f"📊 LEVEL 1: EXECUTIVE KPIs OVERVIEW")
+print(f"=======================================================")
+churn_rate = (df["Churn"] == "Yes").mean() * 100
+total_rev = df["TotalCharges"].sum()
+annual_risk_rev = df[df["Churn"] == "Yes"]["MonthlyCharges"].sum() * 12
+print(f"Total Subscriber Accounts : {len(df):,}")
+print(f"Overall Churn Rate        : {churn_rate:.2f}%")
+print(f"Total Cumulative Revenue  : ${total_rev:,.2f}")
+print(f"Annualized Revenue at Risk: ${annual_risk_rev:,.2f}")
+
+# ==============================================================================
+# 2. PREPROCESSING & FEATURE ENCODING
+# ==============================================================================
+df_clean = df.copy()
+df_clean["Churn_Numeric"] = (df_clean["Churn"] == "Yes").astype(int)
+
+feature_cols = [
+    "Region", "Gender", "SeniorCitizen", "Partner", "Dependents",
+    "Tenure", "PhoneService", "MultipleLines", "InternetService",
+    "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport",
+    "StreamingTV", "StreamingMovies", "Contract", "PaperlessBilling",
+    "PaymentMethod", "MonthlyCharges", "TotalCharges", "SupportTickets"
+]
+
+X = df_clean[feature_cols]
+y = df_clean["Churn_Numeric"]
+
+cat_cols = X.select_dtypes(include=["object"]).columns.tolist()
+X_encoded = pd.get_dummies(X, columns=cat_cols, drop_first=True)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_encoded, y, test_size=0.20, random_state=42, stratify=y
+)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ==============================================================================
+# 3. MACHINE LEARNING BENCHMARKING (LEVEL 4: RISK MATRIX)
+# ==============================================================================
+print(f"\n=======================================================")
+print(f"🤖 MACHINE LEARNING MODEL BENCHMARKS")
+print(f"=======================================================")
+models = {
+    "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
+    "Random Forest": RandomForestClassifier(n_estimators=150, max_depth=8, random_state=42),
+    "Gradient Boosting": GradientBoostingClassifier(n_estimators=120, learning_rate=0.08, max_depth=4, random_state=42)
+}
+
+results = []
+for name, m in models.items():
+    m.fit(X_train_scaled, y_train)
+    pred = m.predict(X_test_scaled)
+    prob = m.predict_proba(X_test_scaled)[:, 1]
+    results.append({
+        "Model": name,
+        "Accuracy": f"{accuracy_score(y_test, pred)*100:.2f}%",
+        "Precision": f"{precision_score(y_test, pred)*100:.2f}%",
+        "Recall": f"{recall_score(y_test, pred)*100:.2f}%",
+        "F1-Score": f"{f1_score(y_test, pred)*100:.2f}%",
+        "ROC-AUC": round(roc_auc_score(y_test, prob), 4)
+    })
+
+print(pd.DataFrame(results).to_string(index=False))
+
+# Champion Model Selection & Detailed Report
+champion = models["Logistic Regression"]
+champion_preds = champion.predict(X_test_scaled)
+print("\n--- Champion Model Classification Report (Logistic Regression) ---")
+print(classification_report(y_test, champion_preds, target_names=["Retained", "Churned"]))
+
+# ==============================================================================
+# 4. FEATURE IMPORTANCE & ROOT-CAUSE ATTRIBUTION (LEVEL 3: DRIVERS)
+# ==============================================================================
+print(f"=======================================================")
+print(f"🔍 LEVEL 3: ROOT-CAUSE DRIVERS & ATTRIBUTION")
+print(f"=======================================================")
+driver_importance = pd.DataFrame({
+    "Feature": X_encoded.columns,
+    "Coefficient": champion.coef_[0],
+    "AbsImpact": np.abs(champion.coef_[0])
+}).sort_values(by="AbsImpact", ascending=False)
+
+print("Top 10 Churn Drivers (Magnitude):")
+print(driver_importance[["Feature", "Coefficient", "AbsImpact"]].head(10).to_string(index=False))
+
+# ==============================================================================
+# 5. REAL-TIME PREDICTIVE SCORING & PRESCRIPTIVE PLAYBOOK (LEVEL 5: ACTIONS)
+# ==============================================================================
+print(f"\n=======================================================")
+print(f"🎯 LEVEL 5: REAL-TIME INFERENCE & PRESCRIPTIVE ACTIONS")
+print(f"=======================================================")
+
+sample_subscriber = pd.DataFrame([{
+    "Region": "West",
+    "Gender": "Female",
+    "SeniorCitizen": 0,
+    "Partner": "No",
+    "Dependents": "No",
+    "Tenure": 4,
+    "PhoneService": "Yes",
+    "MultipleLines": "No",
+    "InternetService": "Fiber Optic",
+    "OnlineSecurity": "No",
+    "OnlineBackup": "No",
+    "DeviceProtection": "No",
+    "TechSupport": "No",
+    "StreamingTV": "Yes",
+    "StreamingMovies": "Yes",
+    "Contract": "Month-to-month",
+    "PaperlessBilling": "Yes",
+    "PaymentMethod": "Electronic check",
+    "MonthlyCharges": 92.40,
+    "TotalCharges": 369.60,
+    "SupportTickets": 3
+}])
+
+sample_enc = pd.get_dummies(sample_subscriber, columns=cat_cols, drop_first=True)
+aligned_sample = pd.DataFrame(0, index=[0], columns=X_encoded.columns)
+for col in sample_enc.columns:
+    if col in aligned_sample.columns:
+        aligned_sample[col] = sample_enc[col]
+
+scaled_sample = scaler.transform(aligned_sample)
+churn_prob = champion.predict_proba(scaled_sample)[0][1]
+
+print(f"Sample Subscriber Churn Risk : {churn_prob*100:.2f}%")
+if churn_prob >= 0.70:
+    print("Risk Classification          : 🔴 HIGH RISK")
+    print("Prescriptive Action Bundle   :")
+    print(" 1. Lock-in: Offer 1-year contract extension with 15% promotional rate.")
+    print(" 2. Tech Support: Add complimentary premium Tech Support for 90 days.")
+    print(" 3. Customer Care: Assign proactive Senior Success Rep to resolve pending tickets.")
+elif churn_prob >= 0.35:
+    print("Risk Classification          : 🟡 MEDIUM RISK")
+    print("Prescriptive Action Bundle   :")
+    print(" 1. Run satisfaction survey regarding billing accuracy and network performance.")
+    print(" 2. Offer loyalty milestone credit.")
+else:
+    print("Risk Classification          : 🟢 LOW RISK (Healthy Account)")
+
+# ==============================================================================
+# 6. WHAT-IF STRATEGY & FINANCIAL ROI SIMULATOR
+# ==============================================================================
+print(f"\n=======================================================")
+print(f"💼 FINANCIAL ROI & WHAT-IF STRATEGY SIMULATOR")
+print(f"=======================================================")
+target_churners = 300
+avg_annual_revenue = 1000
+retention_rate = 0.40
+cost_per_customer = 60
+
+retained_customers = target_churners * retention_rate
+gross_revenue_saved = retained_customers * avg_annual_revenue
+campaign_cost = target_churners * cost_per_customer
+net_roi = ((gross_revenue_saved - campaign_cost) / campaign_cost) * 100
+
+print(f"Target At-Risk Customers Contacted : {target_churners:,}")
+print(f"Successfully Retained Customers    : {int(retained_customers):,}")
+print(f"Gross Revenue Protected            : ${gross_revenue_saved:,.2f}")
+print(f"Total Intervention Campaign Cost   : ${campaign_cost:,.2f}")
+print(f"Projected Net Campaign ROI         : {net_roi:,.1f}%")
+print(f"=======================================================\n")
